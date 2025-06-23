@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy, inject, ElementRef, ViewChild } from '@an
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms'; // Required for ngModel
 import { ApiClientService } from '../../services/api-client.service'; // Import ApiClientService
-import { AuthService } from '../../services/auth.service'; // <--- IMPORTANT: Import the new AuthService
+import { GoogleAuthService } from '../../services/google-auth.service'; // Import GoogleAuthService
 import { Subscription } from 'rxjs';
 
 /**
@@ -31,27 +31,27 @@ export class AiChatInterfaceComponent implements OnInit, OnDestroy {
   currentMessage: string = '';
   messages: ChatMessage[] = [];
   isLoading: boolean = false;
-  currentUserDisplayName: string = 'User'; // Default, will update from AuthService
+  currentUserDisplayName: string = 'User'; // Default, will update from GoogleAuthService
   private authSubscription!: Subscription;
   private userProfileSubscription!: Subscription;
 
-  // Inject ApiClientService and AuthService
+  // Inject ApiClientService and GoogleAuthService
   private apiClientService: ApiClientService = inject(ApiClientService);
-  private authService: AuthService = inject(AuthService); // <--- Inject the new AuthService
+  private googleAuthService: GoogleAuthService = inject(GoogleAuthService);
 
   constructor() { }
 
   ngOnInit(): void {
     // Subscribe to authentication status
-    this.authSubscription = this.authService.isAuthenticated$.subscribe(isAuthenticated => {
+    this.authSubscription = this.googleAuthService.isAuthenticated$.subscribe(isAuthenticated => {
       // You can react to authentication status changes here if needed
-      console.log('User authenticated (OAuth2/OIDC):', isAuthenticated);
+      // console.log('User authenticated (GIS):', isAuthenticated);
     });
 
-    // Subscribe to user profile from AuthService
-    this.userProfileSubscription = this.authService.userProfile$.subscribe(profile => {
-      if (profile && profile.info && profile.info.email) {
-        this.currentUserDisplayName = profile.info.email; // Use email as display name
+    // Subscribe to user profile from GoogleAuthService
+    this.userProfileSubscription = this.googleAuthService.userProfile$.subscribe(profile => {
+      if (profile && profile.email) {
+        this.currentUserDisplayName = profile.email; // Use email as display name
       } else {
         this.currentUserDisplayName = 'Guest';
       }
@@ -81,9 +81,9 @@ export class AiChatInterfaceComponent implements OnInit, OnDestroy {
       return; // Prevent sending empty messages or multiple requests
     }
 
-    // Check if user is authenticated via AuthService before sending message
-    if (!this.authService.getIdToken()) {
-      this.messages.push({ type: 'bot', text: 'Please sign in to send messages.' });
+    // Check if user is authenticated via GIS before sending message
+    if (!this.googleAuthService.getIdToken()) {
+      this.messages.push({ type: 'bot', text: 'Please sign in with Google to send messages.' });
       this.scrollToBottom();
       return;
     }
@@ -144,15 +144,5 @@ export class AiChatInterfaceComponent implements OnInit, OnDestroy {
         this.chatMessagesContainer.nativeElement.scrollTop = this.chatMessagesContainer.nativeElement.scrollHeight;
       }
     }, 0); // Use setTimeout to ensure DOM is updated before scrolling
-  }
-
-  /**
-   * @function signOut
-   * @description Logs out the user via the AuthService.
-   */
-  signOut(): void {
-    this.authService.logout();
-    this.messages = []; // Clear messages on logout
-    this.messages.push({ type: 'bot', text: 'You have been signed out. Please sign in again.' });
   }
 }
