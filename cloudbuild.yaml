@@ -1,0 +1,64 @@
+steps:
+# Install Angular CLI and project dependencies
+- name: 'node:18'
+  entrypoint: 'npm'
+  args: ['install']
+  id: 'npm-install'
+
+# Build the Angular application for production
+- name: 'node:18'
+  entrypoint: 'npm'
+  args: ['run', 'build', '--', '--configuration', 'production']
+  id: 'ng-build'
+  waitFor: ['npm-install']
+
+# Debug: List the contents of the Angular build output directory
+- name: 'gcr.io/cloud-builders/gcloud'
+  entrypoint: 'bash'
+  args: ['-c', 'echo "--- Contents of dist/sellerapp-generative/browser ---" && ls -la dist/sellerapp-generative/browser/ || echo "--- dist/sellerapp-generative/browser directory not found or empty ---"']
+  id: 'debug-list-dist'
+  waitFor: ['ng-build']
+
+# Build the Docker image
+- name: 'gcr.io/cloud-builders/docker'
+  args:
+    - 'build'
+    - '-t'
+    - 'asia-east1-docker.pkg.dev/$PROJECT_ID/cloud-run-repo/sellerapp-generative-app:$BUILD_ID'
+    - '.'
+  id: 'docker-build'
+  waitFor: ['debug-list-dist']
+
+# Push the Docker image to Artifact Registry
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['push', 'asia-east1-docker.pkg.dev/$PROJECT_ID/cloud-run-repo/sellerapp-generative-app:$BUILD_ID']
+  id: 'docker-push'
+  waitFor: ['docker-build']
+
+# Deploy the image to Cloud Run
+- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  id: 'deploy-cloud-run'
+  entrypoint: gcloud
+  args:
+    - 'run'
+    - 'deploy'
+    - 'sellerapp-generative-new' # Your Cloud Run service name (updated based on your previous input)
+    - '--image'
+    - 'asia-east1-docker.pkg.dev/$PROJECT_ID/cloud-run-repo/sellerapp-generative-app:$BUILD_ID'
+    - '--platform'
+    - 'managed'
+    - '--port'
+    - '80'
+    - '--region'
+    - 'asia-east1' # Your chosen region
+    - '--allow-unauthenticated' # Allows public access.
+    - '--service-account' # Explicitly use the default Cloud Run runtime service account
+    - '$PROJECT_NUMBER-compute@developer.gserviceaccount.com' # Use the Compute Engine default SA
+  waitFor: ['docker-push']
+
+images:
+- 'asia-east1-docker.pkg.dev/$PROJECT_ID/cloud-run-repo/sellerapp-generative-app:$BUILD_ID'
+
+# ADD THIS NEW SECTION:
+options:
+  logging: CLOUD_LOGGING_ONLY

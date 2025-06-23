@@ -1,0 +1,9 @@
+.gcloudignore
+node_modules
+# dist
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.git
+.DS_Store
+# Add other files/directories you don't want to upload

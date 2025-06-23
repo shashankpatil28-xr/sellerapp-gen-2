@@ -1,0 +1,44 @@
+    <div class="flex flex-col items-center justify-center h-screen bg-gradient-to-br from-indigo-500 to-purple-600">
+      <div class="bg-white p-8 rounded-lg shadow-2xl text-center max-w-md w-full animate-fade-in-down">
+        <h1 class="text-3xl font-extrabold text-gray-800 mb-6">Welcome to Your AI App</h1>
+        <p class="text-gray-600 mb-8">Please sign in with your Google account to continue.</p>
+
+        <div *ngIf="!isAuthenticated" class="flex justify-center items-center">
+          <!-- Button to trigger OIDC login flow -->
+          <button
+            (click)="login()"
+            class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          >
+            Sign in with Google
+          </button>
+        </div>
+
+        <div *ngIf="isAuthenticated" class="mt-8">
+          <p class="text-green-600 font-semibold mb-4">You are signed in! Redirecting to chat...</p>
+          <button
+            (click)="router.navigate(['/chat'])"
+            class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          >
+            Go to Chat
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <style>
+      /* Basic animation for the card */
+      @keyframes fade-in-down {
+        from {
+          opacity: 0;
+          transform: translateY(-20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      .animate-fade-in-down {
+        animation: fade-in-down 0.8s ease-out forwards;
+      }
+    </style>
+    
