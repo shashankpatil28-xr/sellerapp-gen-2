@@ -1,38 +1,39 @@
-# Stage 1: Build the Angular application
-FROM node:20-alpine AS build
 
-# Set the working directory
+
+# Stage 1: Build the Angular frontend
+FROM node:20-alpine AS angular_builder
+
 WORKDIR /app
 
-# Copy package.json and package-lock.json (or yarn.lock)
+# Copy package.json and install Angular CLI and dependencies
 COPY package.json package-lock.json ./
+RUN npm install     
 
-# Install dependencies
-RUN npm ci --no-optional
-
-# Copy the rest of the application code
+# Copy the rest of the frontend source code
 COPY . .
 
 # Build the Angular application for production
+# *** IMPORTANT: No --base-href for serving from root (/) ***
 RUN npm run build 
 
-# Stage 2: Serve the application with Nginx
-FROM nginx:alpine
-# Set the working directory to nginx asset directory
-WORKDIR /usr/share/nginx/html
+# Stage 2: Build the FastAPI backend
+FROM python:3.11-slim-bookworm AS fastapi_builder
 
-# Remove default Nginx static assets
-RUN rm -rf ./*
+WORKDIR /app
 
-# Copy the built Angular application from the build stage to the Nginx public directory
-# Ensure 'test-sellerapp' matches the output path from the build command
-COPY --from=build /app/dist/test-sellerapp/browser /usr/share/nginx/html
+# Copy server requirements and install them
+COPY server/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy custom Nginx configuration for Angular routing
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Copy the FastAPI application code
+COPY server .
 
+# Copy the built Angular frontend into the 'static' directory
+# This matches the STATIC_FILES_DIR = Path("static") in your main.py
+COPY --from=angular_builder /app/dist/test-sellerapp/browser ./static
 
+# Expose port 80 (internal to container)
 EXPOSE 80
 
-# Start Nginx
-CMD ["nginx", "-g", "daemon off;"]
+# Command to run the FastAPI application with Uvicorn
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "80"]
