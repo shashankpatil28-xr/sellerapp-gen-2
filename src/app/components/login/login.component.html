@@ -3,10 +3,20 @@
     <h1 class="text-3xl font-extrabold text-gray-800 mb-6">Welcome to Your AI App</h1>
     <p class="text-gray-600 mb-8">Please sign in with your Google account to continue.</p>
 
+    <!-- Google Identity Services (GIS) One Tap / Auto Select container -->
+    <!-- THIS DIV MUST ALWAYS BE IN THE DOM for GIS to work correctly for auto-login/one-tap -->
+    <div id="g_id_onload"
+         data-client_id="903496459467-go32lt6sm8qcvb06gmr2dnhndtkrqpam.apps.googleusercontent.com"
+         data-callback="handleCredentialResponse"
+         data-auto_prompt="true"> <!-- Set to 'false' if you don't want the prompt -->
+    </div>
+
+    <!-- The explicit Google Sign-In button, shown only if not authenticated -->
     <div *ngIf="!isAuthenticated" class="flex justify-center items-center">
       <div id="google-signin-button" class="mt-4"></div>
     </div>
 
+    <!-- Content shown if isAuthenticated is true -->
     <div *ngIf="isAuthenticated" class="mt-8">
       <p class="text-green-600 font-semibold mb-4">You are signed in! Redirecting to chat...</p>
       <button

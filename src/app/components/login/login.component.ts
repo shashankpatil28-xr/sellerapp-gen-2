@@ -19,6 +19,14 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
   public router: Router = inject(Router);
 
   ngOnInit(): void {
+    // IMPORTANT: Expose the service's handleCredentialResponse method globally
+    // This is necessary if the 'g_id_onload' div's 'data-callback' attribute is used.
+    // Ensure 'handleCredentialResponse' is public or accessible for this.
+    (window as any).handleCredentialResponse = (response: any) => {
+      // Delegate to the service's private method (using bracket notation to access)
+      this.googleAuthService['handleCredentialResponse'](response);
+    };
+
     // Subscribe to authentication status
     this.authSubscription = this.googleAuthService.isAuthenticated$.subscribe(status => {
       this.isAuthenticated = status;
@@ -31,6 +39,7 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngAfterViewInit(): void {
     // Render the Google Sign-In button only if not already authenticated
+    // The service now internally waits for GIS readiness before attempting to render.
     if (!this.isAuthenticated) {
       this.googleAuthService.renderSignInButton('google-signin-button');
     }
@@ -39,6 +48,10 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
   ngOnDestroy(): void {
     if (this.authSubscription) {
       this.authSubscription.unsubscribe();
+    }
+    // Clean up the global function to prevent memory leaks/conflicts
+    if ((window as any).handleCredentialResponse) {
+      delete (window as any).handleCredentialResponse;
     }
   }
 }

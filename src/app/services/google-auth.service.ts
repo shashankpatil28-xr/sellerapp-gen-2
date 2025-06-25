@@ -1,66 +1,117 @@
 import { Injectable, NgZone } from '@angular/core';
-import { BehaviorSubject, Observable } from 'rxjs';
+import { BehaviorSubject, Observable, Subscription } from 'rxjs'; // Import Subscription
+import { filter, take } from 'rxjs/operators';
 
-// Declare google as any to avoid TypeScript errors if @types/google.accounts is not used or for quick setup
+// Declare google as any to avoid TypeScript errors
 declare const google: any;
 
 @Injectable({
   providedIn: 'root'
 })
 export class GoogleAuthService {
-  // IMPORTANT: Replace 'YOUR_GOOGLE_CLIENT_ID_HERE' with your actual Google Cloud Console Web Application Client ID
   private readonly YOUR_GOOGLE_CLIENT_ID = '903496459467-go32lt6sm8qcvb06gmr2dnhndtkrqpam.apps.googleusercontent.com';
 
-  // BehaviorSubject to track authentication status
   private isAuthenticatedSubject = new BehaviorSubject<boolean>(false);
   isAuthenticated$: Observable<boolean> = this.isAuthenticatedSubject.asObservable();
 
-  // BehaviorSubject to store user profile information (decoded from ID token)
   private userProfileSubject = new BehaviorSubject<any | null>(null);
   userProfile$: Observable<any | null> = this.userProfileSubject.asObservable();
 
-  // Store the ID token here after successful authentication
   private currentIdToken: string | null = null;
 
+  // NEW: BehaviorSubject to track when Google Identity Services is fully loaded and ready
+  private _gsiClientReady = new BehaviorSubject<boolean>(false);
+  public gsiClientReady$: Observable<boolean> = this._gsiClientReady.asObservable().pipe(
+    filter(ready => ready), // Only emit when true
+    take(1) // Complete after the first true emission
+  );
+
+  private initializationAttempted = false; // Flag to ensure initialize is called only once
+
   constructor(private ngZone: NgZone) {
-    this.initializeGoogleSignIn();
+    // Start checking for GSI availability immediately when the service is created.
+    // This replaces the problematic direct call to initializeGoogleSignIn() in the constructor.
+    this.checkGsiAvailability();
   }
 
   /**
-   * @function initializeGoogleSignIn
-   * @description Initializes Google Identity Services with the client ID and callback.
-   * Auto-selects a user if available.
+   * @function checkGsiAvailability
+   * @description Periodically checks for the availability of the global 'google.accounts.id' object.
+   * Once available, it updates the _gsiClientReady BehaviorSubject and triggers internal initialization.
    */
-  private initializeGoogleSignIn(): void {
-    if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
-      google.accounts.id.initialize({
-        client_id: this.YOUR_GOOGLE_CLIENT_ID,
-        callback: (response: any) => this.ngZone.run(() => this.handleCredentialResponse(response)),
-        auto_select: true // Automatically select the user if only one is logged in
+  private checkGsiAvailability(): void {
+    const interval = setInterval(() => {
+      this.ngZone.run(() => { // Ensure Angular zone is aware of changes
+        if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
+          clearInterval(interval); // Stop checking once found
+          this._gsiClientReady.next(true); // Signal that GSI is ready
+
+          console.log('Google Identity Services object is now available.');
+          // Initialize GSI only once after it's confirmed ready
+          if (!this.initializationAttempted) {
+            this.initializeGoogleSignInInternal();
+            this.initializationAttempted = true;
+          }
+        } else {
+          // console.log('Waiting for Google Identity Services script to load...'); // Good for debugging
+        }
       });
-      console.log('Google Identity Services initialized.');
+    }, 100); // Check every 100 milliseconds
+  }
+
+  /**
+   * @function initializeGoogleSignInInternal
+   * @description Internal method to initialize Google Identity Services.
+   * This method should only be called once the GSI script is confirmed loaded.
+   */
+  private initializeGoogleSignInInternal(): void {
+    if (this._gsiClientReady.value) { // Double check if it's truly ready
+      try {
+        google.accounts.id.initialize({
+          client_id: this.YOUR_GOOGLE_CLIENT_ID,
+          // Use a function that calls handleCredentialResponse inside the Angular Zone
+          callback: (response: any) => this.ngZone.run(() => this.handleCredentialResponse(response)),
+          auto_select: true // Automatically select the user if only one is logged in
+        });
+        console.log('Google Identity Services initialized successfully.');
+      } catch (error) {
+        console.error('Error during GSI initialization:', error);
+      }
     } else {
-      console.error('Google Identity Services script not loaded or initialized correctly.');
-      // You might want to implement a retry mechanism or error message to the user here
+      console.error('Attempted to initialize GSI before client was ready. This should not happen.');
     }
   }
 
   /**
    * @function renderSignInButton
    * @description Renders the Google Sign-In button into a specified HTML element.
+   * This method now waits for GSI to be ready before attempting to render the button.
    * @param {string} elementId - The ID of the HTML element where the button should be rendered.
    */
   renderSignInButton(elementId: string): void {
-    if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
-      google.accounts.id.renderButton(
-        document.getElementById(elementId),
-        { theme: 'outline', size: 'large', text: 'signin_with', width: '250' } // Customize button appearance
-      );
-      // Optional: prompt for One Tap sign-in (can be disruptive, use with care)
-      // google.accounts.id.prompt();
-    } else {
-      console.error('Cannot render sign-in button: Google Identity Services not initialized.');
-    }
+    // If GSI is already ready, render immediately.
+    // Otherwise, subscribe to its readiness and then render.
+    this.gsiClientReady$.subscribe(isReady => {
+      if (isReady) {
+        const buttonElement = document.getElementById(elementId);
+        if (buttonElement) {
+          try {
+            google.accounts.id.renderButton(
+              buttonElement,
+              { theme: 'outline', size: 'large', text: 'signin_with', width: '250' } // Customize button appearance
+            );
+            console.log('Google Sign-In button rendered successfully for element:', elementId);
+          } catch (error) {
+            console.error('Error rendering GSI button:', error);
+          }
+        } else {
+          console.error(`HTML element with ID "${elementId}" not found for rendering Google Sign-In button.`);
+        }
+      } else {
+        // This case should ideally be handled by the subscription, but good for logs.
+        console.warn('GSI client not ready when renderSignInButton was called. Waiting...');
+      }
+    });
   }
 
   /**
@@ -71,7 +122,7 @@ export class GoogleAuthService {
    */
   private handleCredentialResponse(response: any): void {
     const idToken = response.credential; // This is the JWT ID token
-    console.log('Encoded JWT ID token:', idToken);
+    console.log('Encoded JWT ID token received:', idToken);
 
     if (idToken) {
       this.currentIdToken = idToken; // Store the ID token
@@ -108,6 +159,7 @@ export class GoogleAuthService {
     }).join(''));
     return JSON.parse(jsonPayload);
   }
+
   getUserEmail(): string | null {
     const userProfile = this.userProfileSubject.value;
     return userProfile ? userProfile.email || null : null;
@@ -128,8 +180,6 @@ export class GoogleAuthService {
    */
   signOut(): void {
     if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
-      // It's good practice to revoke the token from Google to properly end the session.
-      // This requires the email, which we get from the decoded userProfile.
       const emailToRevoke = this.userProfileSubject.value?.email;
       if (emailToRevoke) {
         google.accounts.id.revoke(emailToRevoke, (done: any) => {
@@ -139,7 +189,6 @@ export class GoogleAuthService {
           this.currentIdToken = null; // Clear the stored token
         });
       } else {
-        // If email isn't available, just clear local state
         this.isAuthenticatedSubject.next(false);
         this.userProfileSubject.next(null);
         this.currentIdToken = null;

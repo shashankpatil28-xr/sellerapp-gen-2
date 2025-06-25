@@ -7,8 +7,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
 
+  
   <!-- Google Identity Services (GIS) script -->
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <!-- ADDED: onload="onGoogleScriptLoad()" to signal when the script is fully loaded -->
+  <script src="https://accounts.google.com/gsi/client" async defer onload="onGoogleScriptLoad()"></script>
+
+  <script>
+    // This function will be called by the GIS script once it's fully loaded and ready.
+    function onGoogleScriptLoad() {
+      console.log('Google Identity Services script loaded and ready.');
+      // You can dispatch a custom event or set a global flag here,
+      // which your Angular app can listen for.
+      // For simplicity, we'll rely on the global 'google' object being available.
+
+      // IMPORTANT: If you are initializing GIS directly in index.html (not recommended for Angular),
+      // you would do it here. However, it's better to do it in an Angular service/component
+      // after this function has confirmed the script is ready.
+    }
+  </script>
 </head>
 <body>
   <app-root></app-root>
