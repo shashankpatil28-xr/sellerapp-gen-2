@@ -1,9 +1,9 @@
-import { Component, OnInit, OnDestroy, inject, ElementRef, ViewChild } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, ElementRef, ViewChild, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms'; // Required for ngModel
 import { ApiClientService } from '../../services/api-client.service'; // Import ApiClientService
-import { GoogleAuthService } from '../../services/google-auth.service'; // Import GoogleAuthService
-import { Subscription } from 'rxjs';
+// import { GoogleAuthService } from '../../services/google-auth.service'; // Import GoogleAuthService
+// import { Subscription } from 'rxjs';
 
 /**
  * @interface ChatMessage
@@ -32,43 +32,44 @@ export class AiChatInterfaceComponent implements OnInit, OnDestroy {
   messages: ChatMessage[] = [];
   isLoading: boolean = false;
   currentUserDisplayName: string = 'User'; // Default, will update from GoogleAuthService
-  private authSubscription!: Subscription;
-  private userProfileSubscription!: Subscription;
+  // private authSubscription!: Subscription;
+  // private userProfileSubscription!: Subscription;
 
   // Inject ApiClientService and GoogleAuthService
   private apiClientService: ApiClientService = inject(ApiClientService);
-  private googleAuthService: GoogleAuthService = inject(GoogleAuthService);
+  // private googleAuthService: GoogleAuthService = inject(GoogleAuthService);
 
   constructor() { }
 
   ngOnInit(): void {
     // Subscribe to authentication status
-    this.authSubscription = this.googleAuthService.isAuthenticated$.subscribe(isAuthenticated => {
-      // You can react to authentication status changes here if needed
-      // console.log('User authenticated (GIS):', isAuthenticated);
-    });
+    // this.authSubscription = this.googleAuthService.isAuthenticated$.subscribe(isAuthenticated => {
+    //   // You can react to authentication status changes here if needed
+    //   // console.log('User authenticated (GIS):', isAuthenticated);
+    // });
 
-    // Subscribe to user profile from GoogleAuthService
-    this.userProfileSubscription = this.googleAuthService.userProfile$.subscribe(profile => {
-      if (profile && profile.email) {
-        this.currentUserDisplayName = profile.email; // Use email as display name
-      } else {
-        this.currentUserDisplayName = 'Guest';
-      }
-    });
+    // // Subscribe to user profile from GoogleAuthService
+    // this.userProfileSubscription = this.googleAuthService.userProfile$.subscribe(profile => {
+    //   if (profile && profile.email) {
+    //     this.currentUserDisplayName = profile.email; // Use email as display name
+    //   } else {
+    //     this.currentUserDisplayName = 'Guest';
+    //   }
+    // });
 
     // Add a welcome message
     this.messages.push({ type: 'bot', text: 'Hello! Please type your query to search using the API.' });
+    setTimeout(() => this.scrollToBottom(), 0);
   }
 
   ngOnDestroy(): void {
-    // Unsubscribe to prevent memory leaks
-    if (this.authSubscription) {
-      this.authSubscription.unsubscribe();
-    }
-    if (this.userProfileSubscription) {
-      this.userProfileSubscription.unsubscribe();
-    }
+    // // Unsubscribe to prevent memory leaks
+    // if (this.authSubscription) {
+    //   this.authSubscription.unsubscribe();
+    // }
+    // if (this.userProfileSubscription) {
+    //   this.userProfileSubscription.unsubscribe();
+    // }
   }
 
   /**
@@ -82,26 +83,26 @@ export class AiChatInterfaceComponent implements OnInit, OnDestroy {
     }
 
     // Check if user is authenticated via GIS before sending message
-    if (!this.googleAuthService.getIdToken()) {
-      this.messages.push({ type: 'bot', text: 'Please sign in with Google to send messages.' });
-      this.scrollToBottom();
-      return;
-    }
+    // if (!this.googleAuthService.getIdToken()) {
+    //   this.messages.push({ type: 'bot', text: 'Please sign in with Google to send messages.' });
+    //   this.scrollToBottom();
+    //   return;
+    // }
 
     const userMsgText = this.currentMessage.trim();
     this.messages.push({ type: 'user', text: userMsgText, isSending: true }); // Add user message with sending indicator
     this.currentMessage = ''; // Clear input field immediately
     this.isLoading = true; // Set loading state
-    this.scrollToBottom(); // Scroll to show the new user message
+    this.scrollToBottom(); // Scroll to show the new user message and adjust for input area
 
     // Call the onSearch method from ApiClientService
     this.apiClientService.onSearch({ query: userMsgText }).subscribe({
       next: (apiResponse: any) => {
         // Find the last user message and remove its sending indicator
-        const lastUserMessageIndex = this.messages.findIndex(msg => msg.type === 'user' && msg.isSending);
-        if (lastUserMessageIndex !== -1) {
-          this.messages[lastUserMessageIndex].isSending = false;
-        }
+        // const lastUserMessageIndex = this.messages.findIndex(msg => msg.type === 'user' && msg.isSending);
+        // if (lastUserMessageIndex !== -1) {
+        //   this.messages[lastUserMessageIndex].isSending = false;
+        // }
 
         // Display the raw JSON response, pretty-printed
         this.messages.push({ type: 'bot', text: JSON.stringify(apiResponse, null, 2) });
@@ -135,14 +136,27 @@ export class AiChatInterfaceComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * @function onTextareaInput
+   * @description Called on input event of the textarea to adjust scroll.
+   */
+  @HostListener('input', ['$event.target as HTMLTextAreaElement'])
+  onTextareaInput(textarea: EventTarget | null): void {
+    if (textarea instanceof HTMLTextAreaElement) {
+    this.scrollToBottom(); // Adjust scroll when textarea content changes/grows
+    }
+  }
+
+  /**
    * @function scrollToBottom
    * @description Scrolls the chat messages container to the bottom.
    */
   private scrollToBottom(): void {
+    // Using setTimeout to ensure DOM updates are rendered before scrolling.
+    // A small delay often helps, especially with dynamic content/heights.
     setTimeout(() => {
-      if (this.chatMessagesContainer) {
+      if (this.chatMessagesContainer && this.chatMessagesContainer.nativeElement) {
         this.chatMessagesContainer.nativeElement.scrollTop = this.chatMessagesContainer.nativeElement.scrollHeight;
       }
-    }, 0); // Use setTimeout to ensure DOM is updated before scrolling
+    }, 50); // Increased timeout slightly for better reliability
   }
 }

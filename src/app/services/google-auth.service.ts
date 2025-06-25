@@ -9,7 +9,8 @@ declare const google: any;
   providedIn: 'root'
 })
 export class GoogleAuthService {
-  private readonly YOUR_GOOGLE_CLIENT_ID = '903496459467-go32lt6sm8qcvb06gmr2dnhndtkrqpam.apps.googleusercontent.com';
+  // private readonly YOUR_GOOGLE_CLIENT_ID = '903496459467-go32lt6sm8qcvb06gmr2dnhndtkrqpam.apps.googleusercontent.com'; // for deployment
+   private readonly YOUR_GOOGLE_CLIENT_ID = '903496459467-ei0ti06dbkq33sstr71jbte870tp0q4b.apps.googleusercontent.com'; // for local development
 
   private isAuthenticatedSubject = new BehaviorSubject<boolean>(false);
   isAuthenticated$: Observable<boolean> = this.isAuthenticatedSubject.asObservable();

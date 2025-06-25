@@ -4,7 +4,7 @@ from pathlib import Path
 from fastapi import FastAPI, Request, Response, HTTPException
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
-from starlette.staticfiles import StaticFiles
+from starlette.staticfiles import StaticFiles # Ensure this is imported
 from pydantic import BaseModel
 
 # Google Auth imports for server-side token fetching
@@ -100,18 +100,9 @@ async def chat_proxy_endpoint(request: Request): # Renamed to avoid confusion wi
 
     # Read the incoming request body from the Angular client
     try:
-        # FastAPI's request.json() will parse the body into a Python dict/list
         incoming_request_data = await request.json()
         print(f"Incoming request body from UI: {incoming_request_data}")
-        
-        # Validate against ChatRequest Pydantic model if needed, or directly use
-        # Here, we assume the incoming JSON matches the structure the TARGET_CLOUD_RUN_URL expects
-        # For this simplified example, we'll just pass it through.
-        # If your target Cloud Run expects a specific Pydantic model (like the more complex ChatRequest),
-        # you might do: validated_request = ChatRequest(**incoming_request_data)
-        # and then use validated_request.model_dump_json() for forwarding.
-        # For now, let's keep it simple and just forward the dictionary as JSON.
-        
+            
     except Exception as e:
         print(f"Error parsing incoming JSON from UI: {e}")
         raise HTTPException(status_code=400, detail="Invalid JSON body received from client.")
@@ -125,11 +116,10 @@ async def chat_proxy_endpoint(request: Request): # Renamed to avoid confusion wi
                 timeout=60.0
             )
             response.raise_for_status() # Raise an exception for HTTP errors (4xx or 5xx)
-            
-            # Assuming the target Cloud Run service returns a JSON response
+                
             external_response_data = response.json()
             print(f"Received response from external service: {external_response_data}")
-            
+                
             # Return the external response directly to the Angular client
             return JSONResponse(content=external_response_data, status_code=response.status_code)
 
@@ -150,25 +140,55 @@ async def chat_proxy_endpoint(request: Request): # Renamed to avoid confusion wi
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {e}")
 
 
-# --- Serve Angular Static Files (MUST be defined AFTER all API routes) ---
-# This mount serves all files directly from the 'static' directory.
-# `html=True` is crucial: if a file isn't found (e.g., when the Angular router
-# tries to handle a path like /some-route), it will serve 'index.html', allowing
-# Angular's client-side routing (HTML5 pushState) to take over.
-# This ensures correct MIME types for all your JS, CSS, etc., files.
+# --- Serve Angular Static Files ---
+# Define the static files directory relative to where main.py is run
+# In a Docker container, if main.py is in /app, and Angular files are in /app/static,
+# then Path("static") is correct.
 STATIC_FILES_DIR = Path("static")
+
+# Verify the static directory path and its contents for debugging
+@app.on_event("startup")
+async def startup_event():
+    print(f"Attempting to serve static files from: {STATIC_FILES_DIR.absolute()}")
+    if not STATIC_FILES_DIR.exists():
+        print(f"ERROR: Static directory '{STATIC_FILES_DIR.absolute()}' does NOT exist. Angular build files might be missing or in the wrong place.")
+    else:
+        print(f"Static directory '{STATIC_FILES_DIR.absolute()}' found. Contents:")
+        for item in STATIC_FILES_DIR.iterdir():
+            print(f"  - {item.name} {'(Directory)' if item.is_dir() else '(File)'}")
+        if not (STATIC_FILES_DIR / "index.html").exists():
+            print(f"WARNING: 'index.html' not found in '{STATIC_FILES_DIR.absolute()}'. Angular routing may fail.")
+
+
+# This mount serves all files directly from the 'static' directory.
+# This MUST be placed AFTER all specific API routes like /api/chat.
+# html=True ensures that for any path that doesn't match a static file,
+# index.html is served, allowing Angular's client-side router to take over.
 app.mount("/", StaticFiles(directory=STATIC_FILES_DIR, html=True), name="static")
 
+# Optional: Add a specific route for the root to explicitly serve index.html.
+# This helps ensure the very first load always gets index.html, even if StaticFiles
+# has subtle issues on root.
 
-# --- Fallback for Angular routing (catch-all for HTML5 pushState) ---
-# This ensures that when Angular routes (e.g., /chat, /login) are directly accessed,
-# index.html is served, allowing Angular to handle the routing.
-@app.get("/{full_path:path}")
-async def serve_angular_app(full_path: str):
-    index_file_path = "static/index.html"
-    try:
-        with open(index_file_path, "r", encoding="utf-8") as f:
-            content = f.read()
-        return Response(content=content, media_type="text/html")
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="Index file not found.")
+# # i want to re reroute al the endpoint s exculding /api/* to the ui how can i do that
+# @app.middleware("http")
+# async def redirect_to_ui(request: Request, call_next):
+#     # If the request path does not start with /api, redirect to the Angular UI
+#     if not request.url.path.startswith("/api"):
+#         index_file_path = STATIC_FILES_DIR / "index.html"
+#         if index_file_path.is_file():
+#             return FileResponse(index_file_path, media_type="text/html")
+#         else:
+#             raise HTTPException(status_code=404, detail="index.html not found for UI redirection.")
+    
+#     # For API requests, continue processing normally
+#     response = await call_next(request)
+#     return response
+
+
+@app.get("/")
+async def read_root():
+    index_file_path = STATIC_FILES_DIR / "index.html"
+    if not index_file_path.is_file():
+        raise HTTPException(status_code=404, detail=f"index.html not found at {index_file_path}")
+    return FileResponse(index_file_path, media_type="text/html")

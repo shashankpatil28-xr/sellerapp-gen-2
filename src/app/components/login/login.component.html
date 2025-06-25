@@ -1,23 +1,24 @@
-<div class="flex flex-col items-center justify-center h-screen bg-gradient-to-br from-indigo-500 to-purple-600">
-  <div class="bg-white p-8 rounded-lg shadow-2xl text-center max-w-md w-full animate-fade-in-down">
-    <h1 class="text-3xl font-extrabold text-gray-800 mb-6">Welcome to Your AI App</h1>
-    <p class="text-gray-600 mb-8">Please sign in with your Google account to continue.</p>
+
+<!-- <div class="flex flex-col items-center justify-center h-screen bg-gradient-to-br from-indigo-500 to-purple-600"> -->
+  <!-- <div class="bg-white p-8 rounded-lg shadow-2xl text-center max-w-md w-full animate-fade-in-down"> -->
+    <!-- <h1 class="text-3xl font-extrabold text-gray-800 mb-6">Welcome to Your AI App</h1>
+    <p class="text-gray-600 mb-8">Please sign in with your Google account to continue.</p> -->
 
     <!-- Google Identity Services (GIS) One Tap / Auto Select container -->
     <!-- THIS DIV MUST ALWAYS BE IN THE DOM for GIS to work correctly for auto-login/one-tap -->
-    <div id="g_id_onload"
+    <!-- <div id="g_id_onload"
          data-client_id="903496459467-go32lt6sm8qcvb06gmr2dnhndtkrqpam.apps.googleusercontent.com"
          data-callback="handleCredentialResponse"
-         data-auto_prompt="true"> <!-- Set to 'false' if you don't want the prompt -->
-    </div>
+         data-auto_prompt="true"> 
+    </div> -->
 
     <!-- The explicit Google Sign-In button, shown only if not authenticated -->
-    <div *ngIf="!isAuthenticated" class="flex justify-center items-center">
+    <!-- <div *ngIf="!isAuthenticated" class="flex justify-center items-center">
       <div id="google-signin-button" class="mt-4"></div>
-    </div>
+    </div> -->
 
     <!-- Content shown if isAuthenticated is true -->
-    <div *ngIf="isAuthenticated" class="mt-8">
+    <!-- <div *ngIf="isAuthenticated" class="mt-8">
       <p class="text-green-600 font-semibold mb-4">You are signed in! Redirecting to chat...</p>
       <button
         (click)="router.navigate(['/chat'])"
@@ -29,8 +30,8 @@
   </div>
 </div>
 
-<style>
-  /* Basic animation for the card */
+<style> -->
+  <!-- /* Basic animation for the card */
   @keyframes fade-in-down {
     from {
       opacity: 0;
@@ -44,4 +45,4 @@
   .animate-fade-in-down {
     animation: fade-in-down 0.8s ease-out forwards;
   }
-</style>
+</style> -->
