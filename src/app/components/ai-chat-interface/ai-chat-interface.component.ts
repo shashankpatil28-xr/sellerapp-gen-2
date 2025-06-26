@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms'; // Required for ngModel
 import { ApiClientService } from '../../services/api-client.service'; // Import ApiClientService
 import { GoogleAuthService } from '../../services/google-auth.service'; // Import GoogleAuthService
 import { ChatStateService } from '../../services/chat-state.service'; // Import ChatStateService
-import { Subscription, Observable } from 'rxjs';
+import { Subscription, Observable, filter } from 'rxjs'; // Added filter for rxjs
 
 /**
  * @interface SearchResult
@@ -37,9 +37,7 @@ interface ChatMessage {
   searchResults?: SearchResult[]; // Only applicable for bot messages
 }
 
-// // Dummy API response object, matching the schema you provided
-// // In a real scenario, you might load this from a local data.json file using Angular's HttpClient,
-// // but for a quick dummy function, hardcoding here is fine for demonstration.
+// Dummy API response object, matching the schema you provided for local testing.
 // const DUMMY_API_RESPONSE = {
 //     "llm_response": [
 //         {
@@ -214,11 +212,12 @@ interface ChatMessage {
   styleUrls: ['./ai-chat-interface.component.scss']
 })
 export class AiChatInterfaceComponent implements OnInit, OnDestroy {
-  @ViewChild('chatMessagesContainer') private chatMessagesContainer!: ElementRef;
+  // Use a reference to the outer scrolling div, not main, for reliable scroll
+  @ViewChild('chatScrollContainer') private chatScrollContainer!: ElementRef;
 
   currentMessage: string = '';
   messages$: Observable<ChatMessage[]>;
-  isLoading: boolean = false;
+  isLoading: boolean = false; // Indicates if an API call is in progress
   currentUserDisplayName: string = 'User';
   private authSubscription!: Subscription;
   private userProfileSubscription!: Subscription;
@@ -247,11 +246,15 @@ export class AiChatInterfaceComponent implements OnInit, OnDestroy {
       this.cdr.detectChanges();
     });
 
-    this.chatMessagesSubscription = this.messages$.subscribe(() => {
-      setTimeout(() => {
-        this.scrollToBottom();
-      }, 50);
-    });
+    // Subscribe to messages$ and trigger scroll to bottom whenever messages change
+    this.chatMessagesSubscription = this.messages$
+      .pipe(filter(messages => messages.length > 0)) // Only trigger if there are messages
+      .subscribe(() => {
+        // Use setTimeout to ensure DOM has rendered new messages before scrolling
+        setTimeout(() => {
+          this.scrollToBottom();
+        }, 100); // Increased timeout slightly for better reliability
+      });
   }
 
   ngOnDestroy(): void {
@@ -280,36 +283,30 @@ export class AiChatInterfaceComponent implements OnInit, OnDestroy {
     if (!this.googleAuthService.getIdToken()) {
       this.chatStateService.addMessage({ type: 'bot', text: 'Please sign in with Google to send messages.' });
       console.warn('DEBUG: sendMessage: User not authenticated. Displaying sign-in message.');
+      this.currentMessage = ''; // Clear message on auth warning
       return;
     }
 
     const userMsgText = this.currentMessage.trim();
-    this.chatStateService.addMessage({ type: 'user', text: userMsgText, isSending: true });
-    this.currentMessage = '';
-    this.isLoading = true;
-    this.cdr.detectChanges();
+    // Add user message without isSending. isSending is now handled by the overall isLoading.
+    this.chatStateService.addMessage({ type: 'user', text: userMsgText });
+    this.currentMessage = ''; // Clear input immediately
+    this.isLoading = true; // Set loading state for the bot response
+    this.cdr.detectChanges(); // Update UI to show loading state below user message
 
     console.log('DEBUG: sendMessage: User message added, isLoading set to true.');
 
     this.apiClientService.onSearch({ query: userMsgText }).subscribe({
       next: (apiResponse: any) => {
         this.processApiResponse(apiResponse); // Use the helper to process
-        this.isLoading = false;
+        this.isLoading = false; // Reset loading state
         this.cdr.detectChanges();
         console.log('DEBUG: sendMessage: API Response processed, isLoading set to false.');
       },
       error: (err) => {
         console.error('DEBUG: Error sending message to API:', err);
-        this.chatStateService.updateMessages(messages => {
-          const lastUserMessageIndex = messages.findIndex(msg => msg.type === 'user' && msg.isSending);
-          if (lastUserMessageIndex !== -1) {
-            messages[lastUserMessageIndex].isSending = false;
-          }
-          return messages;
-        });
-
         this.chatStateService.addMessage({ type: 'bot', text: 'Error: ' + (err.message || 'Something went wrong with the API call. Check console for details.') });
-        this.isLoading = false;
+        this.isLoading = false; // Reset loading state
         this.cdr.detectChanges();
         console.log('DEBUG: sendMessage: Error handled, isLoading set to false.');
       }
@@ -326,9 +323,10 @@ export class AiChatInterfaceComponent implements OnInit, OnDestroy {
   //   console.log('DEBUG: dummySendMessage: Triggered.');
 
   //   // Simulate sending a user message
-  //   this.chatStateService.addMessage({ type: 'user', text: queryText, isSending: true });
-  //   this.isLoading = true;
-  //   this.cdr.detectChanges(); // Update UI to show sending state
+  //   this.chatStateService.addMessage({ type: 'user', text: queryText });
+  //   this.currentMessage = ''; // Clear input immediately
+  //   this.isLoading = true; // Set loading state for the bot response
+  //   this.cdr.detectChanges(); // Update UI to show loading state below user message
 
   //   // Simulate network delay
   //   await new Promise(resolve => setTimeout(resolve, 1500)); // 1.5 seconds delay
@@ -336,16 +334,7 @@ export class AiChatInterfaceComponent implements OnInit, OnDestroy {
   //   // Process the dummy response directly
   //   this.processApiResponse(DUMMY_API_RESPONSE);
 
-  //   // Update the last user message to remove the sending indicator
-  //   this.chatStateService.updateMessages(messages => {
-  //     const lastUserMessageIndex = messages.findIndex(msg => msg.type === 'user' && msg.isSending);
-  //     if (lastUserMessageIndex !== -1) {
-  //       messages[lastUserMessageIndex].isSending = false;
-  //     }
-  //     return messages;
-  //   });
-
-  //   this.isLoading = false;
+  //   this.isLoading = false; // Reset loading state
   //   this.cdr.detectChanges(); // Force update after processing and adding bot message
   //   console.log('DEBUG: dummySendMessage: Dummy response processed, isLoading set to false.');
   // }
@@ -403,10 +392,10 @@ export class AiChatInterfaceComponent implements OnInit, OnDestroy {
    */
   handleEnterKey(event: KeyboardEvent): void {
     if (event.key === 'Enter' && !event.shiftKey) {
-      event.preventDefault();
-      this.sendMessage();
-      // this.dummySendMessage(); // Use dummySendMessage for testing
+      event.preventDefault(); // Prevent default new line
+      this.sendMessage(); // Call the actual send function
     }
+    // If Shift + Enter, allow default behavior (new line in textarea)
   }
 
   /**
@@ -414,11 +403,11 @@ export class AiChatInterfaceComponent implements OnInit, OnDestroy {
    * @description Scrolls the chat messages container to the bottom.
    */
   private scrollToBottom(): void {
-    if (this.chatMessagesContainer) {
-      this.chatMessagesContainer.nativeElement.scrollTop = this.chatMessagesContainer.nativeElement.scrollHeight;
+    if (this.chatScrollContainer) {
+      this.chatScrollContainer.nativeElement.scrollTop = this.chatScrollContainer.nativeElement.scrollHeight;
       console.log('DEBUG: scrollToBottom: Scrolled to bottom.');
     } else {
-      console.warn('DEBUG: scrollToBottom: chatMessagesContainer is not available yet.');
+      console.warn('DEBUG: scrollToBottom: chatScrollContainer is not available yet.');
     }
   }
 }
