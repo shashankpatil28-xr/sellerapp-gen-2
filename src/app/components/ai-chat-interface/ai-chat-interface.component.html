@@ -1,62 +1,49 @@
-<div class="flex flex-col h-screen bg-gray-50 antialiased font-sans overflow-hidden">
-  <header class="flex items-center justify-between p-4 bg-indigo-500 text-white shadow-md rounded-b-lg">
-    <h1 class="text-2xl font-bold">DPI Agents Demo</h1>
-  </header>
-
-  <div #chatScrollContainer class="flex-1 flex justify-center py-6 px-4 sm:px-6 lg:px-8 overflow-y-auto mb-20">
-    <div class="w-full max-w-6xl flex flex-col bg-gray-50">
-      <main class="flex-1 p-6 space-y-5">
-        <div *ngFor="let message of (messages$ | async); let i = index" [ngClass]="{
-            'flex justify-end': message.type === 'user',
-            'flex justify-start': message.type === 'bot'
-          }">
+<div class="chat-container">
+  <div #chatScrollContainer class="messages-display">
+    <ng-container *ngIf="messages$ | async as messages; else noMessages">
+      <div *ngIf="messages.length === 0" class="no-messages">
+        Start a conversation with the AI!
+      </div>
+      <div *ngFor="let message of messages; trackBy: trackByMessageId" [class]="'message ' + message.type">
+        <div class="message-bubble">
           <div [ngClass]="{
-                  'bg-indigo-500 text-white ml-auto mr-2': message.type === 'user',
-                  'bg-gray-100 text-gray-800 mr-auto ml-2': message.type === 'bot'
-                }"
-            class="max-w-[90%] w-fit flex flex-col p-4 rounded-xl shadow-md break-words transition-all duration-300 ease-in-out transform hover:scale-[1.005] relative">
-            <div *ngIf="message.type === 'bot'"
-              class="absolute -left-12 top-2 bg-gray-500 text-white rounded-full w-10 h-10 flex items-center justify-center font-bold text-lg">
-              B
-            </div>
-            <div *ngIf="message.type === 'user'"
-              class="absolute -right-12 top-2 bg-indigo-500 text-white rounded-full w-10 h-10 flex items-center justify-center font-bold text-lg">
-              U
-            </div>
-            
-            <p *ngIf="message.type === 'user'" class="text-base leading-relaxed">{{ message.text }}</p>
-               
-            
-            <ng-container *ngIf="message.type === 'bot'">
-              <p *ngIf="message.text" class="text-base leading-relaxed mb-3 whitespace-pre-wrap">{{ message.text }}</p>
+                  'bot-avatar': message.type === 'bot',
+                  'user-avatar': message.type === 'user'
+                }" class="avatar-circle">
+            {{ message.type === 'bot' ? 'B' : (currentUserDisplayName | slice:0:1).toUpperCase() }}
+          </div>
 
-              <div *ngIf="message.searchResults && message.searchResults.length > 0"
-                class="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div *ngFor="let result of message.searchResults"
-                  class="bg-gray-50 p-3 rounded-lg border border-gray-200 text-gray-900 transition-all duration-300 ease-in-out hover:shadow-md cursor-pointer flex flex-col justify-between">
-                  <div class="flex flex-col items-center">
-                    <img *ngIf="result.images && result.images.length > 0" [src]="result.images[0]"
-                      alt="{{ result.name }}"
-                      class="w-full max-h-36 object-contain rounded-md mb-2 border border-gray-100 bg-white p-1"
-                      onerror="this.onerror=null;this.src='https://placehold.co/144x144/F0F0F0/888888?text=No+Image';this.classList.add('p-4');"
-                      loading="lazy">
-                    <h3 class="font-medium text-base text-center leading-tight mb-1 line-clamp-2 text-gray-800">
-                      {{ result.name }}</h3>
-                  </div>
-                  <p class="text-xs text-gray-500 text-center">Brand: <span class="font-normal">{{ result.brand_name ||
-                      'N/A' }}</span></p>
-                  <p class="text-lg font-bold text-green-700 text-center mt-2">
-                    {{ result.price.currency }} {{ result.price.value }}
-                  </p>
-                  <button
-                    class="mt-3 w-full bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md transition-colors duration-200">
-                    show details
-                  </button>
+          <div class="message-content">
+            <p *ngIf="message.text" class="text-base leading-relaxed"
+               [ngClass]="{'whitespace-pre-wrap': message.type === 'bot'}">{{ message.text }}</p>
+
+            <div *ngIf="message.searchResults && message.searchResults.length > 0"
+              class="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div *ngFor="let result of message.searchResults"
+                class="bg-gray-50 p-3 rounded-lg border border-gray-200 text-gray-900 transition-all duration-300 ease-in-out hover:shadow-md cursor-pointer flex flex-col justify-between">
+                <div class="flex flex-col items-center">
+                  <img *ngIf="result.images && result.images.length > 0" [src]="result.images[0]"
+                    alt="{{ result.name }}"
+                    class="w-full max-h-36 object-contain rounded-md mb-2 border border-gray-100 bg-white p-1"
+                    onerror="this.onerror=null;this.src='https://placehold.co/144x144/F0F0F0/888888?text=No+Image';this.classList.add('p-4');"
+                    loading="lazy">
+                  <h3 class="font-medium text-base text-center leading-tight mb-1 line-clamp-2 text-gray-800">
+                    {{ result.name }}</h3>
                 </div>
+                <p class="text-xs text-gray-500 text-center">Brand: <span class="font-normal">{{ result.brand_name ||
+                    'N/A' }}</span></p>
+                <p class="text-lg font-bold text-green-700 text-center mt-2">
+                  {{ result.price.currency }} {{ result.price.value }}
+                </p>
+                <button
+                  class="mt-3 w-full bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md transition-colors duration-200">
+                  show details
+                </button>
               </div>
-            </ng-container>
+            </div>
 
-            <div *ngIf="message.isSending" class="flex justify-end items-center text-xs mt-2 text-white opacity-80">
+            <div *ngIf="message.type === 'user' && message.isSending"
+              class="flex justify-end items-center text-xs mt-2 text-white opacity-80">
               <svg class="animate-spin h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
                 stroke="currentColor">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -64,42 +51,36 @@
                   d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
                 </path>
               </svg>
-              <span class="ml-1" [ngClass]="{'text-gray-600': message.type === 'bot'}">Sending...</span>
+              <span class="ml-1">Sending...</span>
             </div>
-          </div>
-        </div>
 
-        <div *ngIf="isLoading && (messages$ | async) && (messages$ | async)!.slice(-1)[0]?.type === 'user'"
-          class="flex justify-start">
-          <div class="bg-gray-100 text-gray-800 max-w-[75%] md:max-w-[60%] p-4 rounded-xl shadow-md animate-pulse">
-            <div class="h-4 bg-gray-300 rounded w-3/4 mb-2"></div>
-            <div class="h-4 bg-gray-300 rounded w-1/2"></div>
+            <span class="message-timestamp">{{ message.timestamp | date:'shortTime' }}</span>
           </div>
         </div>
-      </main>
+      </div>
+    </ng-container>
+    <ng-template #noMessages>
+      <div class="loading-messages">Loading chat...</div>
+    </ng-template>
+
+    <div *ngIf="isLoading && (messages$ | async) && (messages$ | async)!.slice(-1)[0]?.type === 'user'"
+      class="flex justify-start bot-thinking-indicator">
+      <div
+        class="message-bubble bg-gray-100 text-gray-800 max-w-[75%] md:max-w-[60%] p-4 rounded-xl shadow-md animate-pulse">
+        <div class="h-4 bg-gray-300 rounded w-3/4 mb-2"></div>
+        <div class="h-4 bg-gray-300 rounded w-1/2"></div>
+      </div>
     </div>
   </div>
 
-  <div class="absolute bottom-0 left-0 w-full px-4 py-2 bg-gray-50 z-50">
+  <div class="input-area">
     <div class="flex items-center space-x-3 max-w-6xl mx-auto bg-white shadow-lg rounded-lg p-4 border border-gray-200">
       <textarea [(ngModel)]="currentMessage" (keyup)="handleEnterKey($event)" placeholder="Type your message..."
         rows="1"
         class="flex-1 resize-none overflow-hidden p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-150 ease-in-out text-gray-800 scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200"
         style="min-height: 40px; max-height: 150px;"></textarea>
-        <!-- <button (click)="dummySendMessage(currentMessage.trim() || 'Dummy Query')" 
-                [disabled]="isLoading"
-                class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-5 rounded-lg shadow-lg transition duration-300 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transform hover:scale-105 active:scale-95"
-                title="Send Dummy Response (for UI testing)">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-          </svg>
-        </button> -->
-      <button
-        (click)="sendMessage()"
-        [disabled]="isLoading"
-        class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-      >
+      <button (click)="dummySendMessage()" [disabled]="isLoading || !currentMessage.trim()"
+        class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
         </svg>
@@ -109,7 +90,166 @@
 </div>
 
 <style>
-  /* For Webkit browsers (Chrome, Safari) */
+  /* Your existing styles remain the same */
+  /* Adjust basic chat container styles */
+  .chat-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding-left: 20px;
+    /* Offset for the sidebar */
+    box-sizing: border-box;
+    /* Include padding in element's total width and height */
+    overflow: hidden;
+    /* Hide overflow of the entire container */
+  }
+
+  /* Messages display area */
+  .messages-display {
+    flex-grow: 1;
+    /* Allows message area to fill available space */
+    overflow-y: auto;
+    /* Enable vertical scrolling for messages */
+    padding: 1rem;
+    display: flex;
+    /* Use flex to push messages to top/bottom */
+    flex-direction: column;
+    background-color: #f8fafc;
+    /* Light background for chat area */
+    border-radius: 8px;
+    box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.05);
+    /* Subtle inner shadow */
+  }
+
+  .message {
+    display: flex;
+    align-items: flex-start;
+    /* Align avatar and bubble to top */
+    margin-bottom: 1.25rem;
+    /* Space between messages */
+  }
+
+  .message.user {
+    justify-content: flex-end;
+
+    .message-bubble {
+      background-color: #4f46e5;
+      /* Indigo */
+      color: white;
+      margin-left: auto;
+      margin-right: 2rem;
+      /* Space for user avatar */
+    }
+  }
+
+  .message.bot {
+    justify-content: flex-start;
+
+    .message-bubble {
+      background-color: #e2e8f0;
+      /* Light gray */
+      color: #333;
+      margin-right: auto;
+      margin-left: 2rem;
+      /* Space for bot avatar */
+    }
+  }
+
+  .message-bubble {
+    max-width: 75%;
+    padding: 0.75rem 1rem;
+    border-radius: 0.75rem;
+    position: relative;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    /* Default alignment */
+    word-wrap: break-word;
+    /* Ensure long words break */
+  }
+
+  .message.user .message-bubble {
+    align-items: flex-end;
+    /* Align content to the right for user messages */
+  }
+
+  .message-timestamp {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.7);
+    margin-top: 0.5rem;
+    align-self: flex-end;
+    /* Align timestamp to the right within the bubble */
+  }
+
+  .message.bot .message-timestamp {
+    color: rgba(0, 0, 0, 0.5);
+    /* Darker timestamp for bot messages */
+    align-self: flex-start;
+    /* Align timestamp to the left for bot messages */
+  }
+
+  /* Avatars */
+  .avatar-circle {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 1.1rem;
+    color: white;
+    flex-shrink: 0;
+    /* Prevent shrinking */
+  }
+
+  .user-avatar {
+    background-color: #4f46e5;
+    margin-left: 0.5rem;
+    /* Space from message bubble */
+    order: 2;
+    /* Place after message bubble for user */
+  }
+
+  .bot-avatar {
+    background-color: #64748b;
+    /* Slate gray */
+    margin-right: 0.5rem;
+    /* Space from message bubble */
+    order: 1;
+    /* Place before message bubble for bot */
+  }
+
+  .message.user .message-bubble {
+    order: 1;
+  }
+
+  .message.bot .message-bubble {
+    order: 2;
+  }
+
+  /* Input Area */
+  .input-area {
+    padding: 1rem;
+    background-color: #f8fafc;
+    border-top: 1px solid #e2e8f0;
+    box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.05);
+    /* Shadow on top */
+    z-index: 10;
+    /* Ensure it's above other content */
+  }
+
+  textarea {
+    min-height: 40px;
+    /* Ensure a minimum height */
+    max-height: 150px;
+    /* Max height before scrolling */
+    resize: none;
+    /* Disable manual resize handle */
+  }
+
+  /* Scrollbar styles from your original HTML */
   .scrollbar-thin::-webkit-scrollbar {
     width: 8px;
     height: 8px;
@@ -122,27 +262,61 @@
 
   .scrollbar-thin::-webkit-scrollbar-thumb {
     background: #a0a0a0;
-    /* Darker grey */
     border-radius: 10px;
   }
 
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
     background: #7a7a7a;
-    /* Even darker on hover */
   }
 
-  /* For Firefox */
   .scrollbar-thin {
     scrollbar-width: thin;
     scrollbar-color: #a0a0a0 #f1f1f1;
   }
 
-  /* Custom line-clamp utility, if not available in Tailwind config */
   .line-clamp-2 {
     display: -webkit-box;
     -webkit-line-clamp: 2;
-    line-clamp: 2; 
+    line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
+  }
+
+  /* Spinner for thinking state */
+  @keyframes spin {
+    from {
+      transform: rotate(0deg);
+    }
+
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .animate-spin {
+    animation: spin 1s linear infinite;
+  }
+
+  .no-messages {
+    text-align: center;
+    color: #999;
+    font-style: italic;
+    padding: 20px;
+    margin-top: auto;
+    /* Push to bottom if only message */
+    margin-bottom: auto;
+    /* Center vertically if no other messages */
+  }
+
+  .loading-messages {
+    text-align: center;
+    color: #999;
+    font-style: italic;
+    padding: 20px;
+  }
+
+  .bot-thinking-indicator {
+    margin-top: 1.25rem;
+    /* Match message spacing */
   }
 </style>

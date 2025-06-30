@@ -1,0 +1,39 @@
+<div class="sidebar-container">
+  <div class="sidebar-header">
+    <h2>SellerApp AI</h2>
+    <div class="user-auth-section">
+      <ng-container *ngIf="isAuthenticated$ | async">
+        <div class="user-info" *ngIf="userInfo$ | async as userInfo">
+          <p>Welcome, <strong>{{ userInfo.name || userInfo.email }}</strong></p>
+          <p class="user-details" *ngIf="userInfo.prefLanguage">Lang: {{ userInfo.prefLanguage }}</p>
+          <p class="user-details" *ngIf="userInfo.location">Loc: {{ userInfo.location }}</p>
+        </div>
+        <button class="auth-button sign-out-button" (click)="signOut()">
+          <span class="material-icons">logout</span> Sign Out
+        </button>
+      </ng-container>
+      </div>
+    <button class="new-chat-button" (click)="createNewChat()">
+      <span class="material-icons">add</span> New Chat
+    </button>
+  </div>
+
+  <div class="chat-list">
+    <h3>Chats</h3>
+    <ng-container *ngIf="sessions$ | async as sessions; else noChats">
+      <ul *ngIf="sessions.length > 0; else noChats">
+        <li *ngFor="let session of sessions"
+            [class.active]="(currentSessionId$ | async) === session.id"
+            (click)="switchChat(session.id)">
+          <span class="session-title">{{ session.title }}</span>
+          <button class="delete-chat-button" (click)="deleteChat(session.id, $event)">
+            <span class="material-icons">delete</span>
+          </button>
+        </li>
+      </ul>
+    </ng-container>
+    <ng-template #noChats>
+      <p class="no-chats-message">No chats yet. Click "New Chat" to start!</p>
+    </ng-template>
+  </div>
+</div>

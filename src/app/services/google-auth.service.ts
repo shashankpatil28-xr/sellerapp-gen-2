@@ -9,6 +9,7 @@ declare const google: any;
   providedIn: 'root'
 })
 export class GoogleAuthService {
+  
   private readonly YOUR_GOOGLE_CLIENT_ID = '903496459467-go32lt6sm8qcvb06gmr2dnhndtkrqpam.apps.googleusercontent.com';
 
   private isAuthenticatedSubject = new BehaviorSubject<boolean>(false);
@@ -57,6 +58,16 @@ export class GoogleAuthService {
         }
       });
     }, 100); // Check every 100 milliseconds
+  }
+
+  signInWithGoogle() {
+    // Ensure GSI is initialized before signing in
+    if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
+      this.initializeGoogleSignInInternal();
+      google.accounts.id.prompt(); // Show the One Tap prompt
+    } else {
+      console.error('Google Identity Services is not available. Please ensure the script is loaded.');
+    }
   }
 
   /**

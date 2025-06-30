@@ -1,0 +1,16 @@
+/* src/app/layouts/main-layout/main-layout.component.scss */
+.main-layout-container {
+  display: flex;
+  height: 100vh; /* Full viewport height */
+  overflow: hidden; /* Prevent scrolling on the container itself */
+}
+
+.main-content-area {
+  flex-grow: 1; /* Takes up all available horizontal space */
+  margin-left: 280px; /* Offset for the fixed sidebar width */
+  display: flex;
+  flex-direction: column; /* Content within this area can flow vertically */
+  overflow-y: auto; /* Allow vertical scrolling for the content area if needed */
+  padding: 20px; /* Example padding */
+  box-sizing: border-box;
+}
